@@ -2,9 +2,30 @@ import UIKit
 
 class ViewController: UIViewController, URLSessionDownloadDelegate {
 
+    // Text fields for IP, port, and filename
+    let ipField: UITextField = {
+        let tf = UITextField()
+        tf.placeholder = "Enter IP (default: 192.168.0.138)"
+        tf.text = "192.168.0.138"
+        tf.borderStyle = .roundedRect
+        tf.translatesAutoresizingMaskIntoConstraints = false
+        return tf
+    }()
+
+    let portField: UITextField = {
+        let tf = UITextField()
+        tf.placeholder = "Enter Port (default: 2121)"
+        tf.text = "2121"
+        tf.keyboardType = .numberPad
+        tf.borderStyle = .roundedRect
+        tf.translatesAutoresizingMaskIntoConstraints = false
+        return tf
+    }()
+
     let filenameField: UITextField = {
         let tf = UITextField()
-        tf.placeholder = "Enter filename (e.g., example.txt)"
+        tf.placeholder = "Enter filename (default: readme.txt)"
+        tf.text = "readme.txt"
         tf.borderStyle = .roundedRect
         tf.translatesAutoresizingMaskIntoConstraints = false
         return tf
@@ -39,13 +60,25 @@ class ViewController: UIViewController, URLSessionDownloadDelegate {
         super.viewDidLoad()
         view.backgroundColor = .white
 
+        // Add all subviews
+        view.addSubview(ipField)
+        view.addSubview(portField)
         view.addSubview(filenameField)
         view.addSubview(downloadButton)
         view.addSubview(progressView)
         view.addSubview(statusLabel)
 
+        // Layout
         NSLayoutConstraint.activate([
-            filenameField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
+            ipField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
+            ipField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            ipField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+            portField.topAnchor.constraint(equalTo: ipField.bottomAnchor, constant: 15),
+            portField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            portField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+            filenameField.topAnchor.constraint(equalTo: portField.bottomAnchor, constant: 15),
             filenameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             filenameField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
 
@@ -65,12 +98,22 @@ class ViewController: UIViewController, URLSessionDownloadDelegate {
     }
 
     @objc func downloadTapped() {
-        guard let filename = filenameField.text, !filename.isEmpty else {
-            statusLabel.text = "Status: Enter a filename!"
+        // Use defaults if fields are empty
+        let ip = ipField.text?.isEmpty == false ? ipField.text! : "192.168.0.138"
+        let port = portField.text?.isEmpty == false ? portField.text! : "2121"
+        let filename = filenameField.text?.isEmpty == false ? filenameField.text! : "readme.txt"
+
+        guard let portInt = Int(port) else {
+            statusLabel.text = "Status: Invalid port!"
             return
         }
 
-        let ftpUrl = URL(string: "ftp://user:12345@127.0.0.1:2121/\(filename)")!
+        let ftpUrlString = "ftp://user:12345@\(ip):\(portInt)/\(filename)"
+        guard let ftpUrl = URL(string: ftpUrlString) else {
+            statusLabel.text = "Status: Invalid URL!"
+            return
+        }
+
         let destination = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(filename)
 
         statusLabel.text = "Status: Downloading..."
@@ -94,8 +137,9 @@ class ViewController: UIViewController, URLSessionDownloadDelegate {
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
-        guard let filename = filenameField.text else { return }
+        let filename = filenameField.text?.isEmpty == false ? filenameField.text! : "readme.txt"
         let destination = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(filename)
+
         try? FileManager.default.moveItem(at: location, to: destination)
         statusLabel.text = "Status: Downloaded \(filename) to Documents"
         progressView.progress = 1.0
